@@ -130,7 +130,7 @@ public class PaperActionTypeRegistry extends AbstractActionTypeRegistry {
     );
     public static final ActionType ITEM_DROP = new ItemActionType("item-drop", ActionResultType.REMOVES, true);
     public static final ActionType ITEM_INSERT = new ItemActionType("item-insert", ActionResultType.CREATES, false);
-    public static final ActionType ITEM_PICKUP = new ItemActionType("item-pickup", ActionResultType.NONE, false);
+    public static final ActionType ITEM_PICKUP = new ItemActionType("item-pickup", ActionResultType.NONE, true);
     public static final ActionType ITEM_REMOVE = new ItemActionType("item-remove", ActionResultType.REMOVES, true);
     public static final ActionType ITEM_ROTATE = new ItemActionType("item-rotate", ActionResultType.NONE, false);
     public static final ActionType ITEM_TRADE = new ItemActionType("item-trade", ActionResultType.NONE, false);

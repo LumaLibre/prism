@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.prism_mc.prism.api.actions.ActionData;
 import org.prism_mc.prism.api.actions.types.ActionTypeRegistry;
 import org.prism_mc.prism.api.activities.AbstractActivity;
@@ -47,6 +48,7 @@ import org.prism_mc.prism.api.services.pagination.PartialListPaginationResult;
 import org.prism_mc.prism.api.storage.World;
 import org.prism_mc.prism.api.util.Coordinate;
 import org.prism_mc.prism.api.util.Pair;
+import org.prism_mc.prism.core.storage.adapters.sql.SqlActivityQueryBuilder;
 import org.prism_mc.prism.loader.services.logging.LoggingService;
 
 public class ClickhouseActivityQueryBuilder {
@@ -419,7 +421,13 @@ public class ClickhouseActivityQueryBuilder {
      * @param sql The SQL builder
      */
     private void appendModificationOrdering(StringBuilder sql) {
+        String chronologicalActions = SqlActivityQueryBuilder.CHRONOLOGICAL_MODIFICATION_ACTIONS.stream()
+            .map(key -> "'" + key + "'")
+            .collect(Collectors.joining(", ", "(", ")"));
         sql.append(" ORDER BY ");
+        sql.append("(CASE WHEN action IN ").append(chronologicalActions).append(" THEN 1 ELSE -1 END) ASC, ");
+        sql.append("(CASE WHEN action IN ").append(chronologicalActions).append(" THEN `timestamp` END) DESC, ");
+        sql.append("(CASE WHEN action IN ").append(chronologicalActions).append(" THEN activity_id END) DESC, ");
         sql.append("(CASE WHEN affected_block_name IN ('cave_vines', 'weeping_vines') THEN 1 ELSE -1 END) ASC, ");
         sql.append(
             "(CASE WHEN affected_block_name IN ('cave_vines_plant', 'weeping_vines_plant') THEN 1 ELSE -1 END) ASC, "

@@ -165,17 +165,28 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
         Activity activityContext,
         ModificationQueueMode mode
     ) {
+        // Everything below changes real inventories and entities, which previews shouldn't do
+        boolean completing = mode.equals(ModificationQueueMode.COMPLETING);
+
         // We ignore item-drop from any non-player source because they only drop items on break, which
         // means their inventories should already be serialized on block-break and this would be redundant
         if (type().equals(PaperActionTypeRegistry.ITEM_DROP)) {
-            if (
-                activityContext.cause() != null &&
-                activityContext.cause().container() instanceof PlayerContainer playerContainer
-            ) {
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerContainer.uuid());
-                if (offlinePlayer.isOnline()) {
-                    return addItem(activityContext, ((Player) offlinePlayer).getInventory());
+            Player player = onlineCausePlayer(activityContext);
+            if (player != null) {
+                if (!completing) {
+                    return ModificationResult.builder().activity(activityContext).statusFromMode(mode).build();
                 }
+
+                return addItem(activityContext, player.getInventory());
+            }
+        } else if (type().equals(PaperActionTypeRegistry.ITEM_PICKUP)) {
+            Player player = onlineCausePlayer(activityContext);
+            if (player != null) {
+                if (!completing) {
+                    return ModificationResult.builder().activity(activityContext).statusFromMode(mode).build();
+                }
+
+                return removeItem(activityContext, player.getInventory());
             }
         } else if (type().resultType().equals(ActionResultType.REMOVES)) {
             var world = Bukkit.getServer().getWorld(activityContext.world().key());
@@ -187,6 +198,10 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
             );
 
             if (location.getBlock().getState() instanceof InventoryHolder holder) {
+                if (!completing) {
+                    return ModificationResult.builder().activity(activityContext).statusFromMode(mode).build();
+                }
+
                 return addItem(activityContext, holder.getInventory());
             }
 
@@ -194,6 +209,10 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
             if (TagLib.ALL_ARMOR.isTagged(itemStack.getType())) {
                 var armorStand = location.getNearbyEntitiesByType(ArmorStand.class, 1).stream().findFirst();
                 if (armorStand.isPresent()) {
+                    if (!completing) {
+                        return ModificationResult.builder().activity(activityContext).statusFromMode(mode).build();
+                    }
+
                     if (Tag.ITEMS_HEAD_ARMOR.isTagged(itemStack.getType())) {
                         armorStand.get().setItem(EquipmentSlot.HEAD, itemStack);
                     } else if (Tag.ITEMS_CHEST_ARMOR.isTagged(itemStack.getType())) {
@@ -227,6 +246,59 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
             .activity(activityContext)
             .skipped()
             .target(itemStack.translationKey())
+            .build();
+    }
+
+    /**
+     * Get the activity's cause as an online player.
+     *
+     * @param activityContext Activity context
+     * @return The online player, or null if the cause is not a player or they are offline
+     */
+    private Player onlineCausePlayer(Activity activityContext) {
+        if (
+            activityContext.cause() != null &&
+            activityContext.cause().container() instanceof PlayerContainer playerContainer
+        ) {
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerContainer.uuid());
+            if (offlinePlayer.isOnline()) {
+                return (Player) offlinePlayer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Attempts to remove an item from an inventory. If not all of it is present, returns a partial result.
+     *
+     * @param activityContext Activity context
+     * @param inventory Inventory
+     * @return Modification result
+     */
+    private ModificationResult removeItem(Activity activityContext, Inventory inventory) {
+        var remainderMap = inventory.removeItem(itemStack.clone());
+
+        if (remainderMap.isEmpty()) {
+            return ModificationResult.builder().activity(activityContext).applied().build();
+        }
+
+        var remainder = remainderMap.values().stream().findFirst();
+
+        // The item is no longer in the inventory (used/stored/dropped/etc.)
+        if (remainder.get().getAmount() == itemStack.getAmount()) {
+            return ModificationResult.builder()
+                .activity(activityContext)
+                .skipped()
+                .skipReason(ModificationSkipReason.ITEM_MISSING)
+                .target(itemStack.translationKey())
+                .build();
+        }
+
+        return ModificationResult.builder()
+            .activity(activityContext)
+            .partial()
+            .partialReason(ModificationPartialReason.ITEM_MISSING)
             .build();
     }
 

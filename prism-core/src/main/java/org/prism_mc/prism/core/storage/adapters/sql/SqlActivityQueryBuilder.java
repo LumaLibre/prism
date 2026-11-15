@@ -67,6 +67,11 @@ import org.prism_mc.prism.loader.services.configuration.storage.StorageConfigura
 public class SqlActivityQueryBuilder {
 
     /**
+     * Action keys that rollbacks/restores must apply in reverse chronological order.
+     */
+    public static final List<String> CHRONOLOGICAL_MODIFICATION_ACTIONS = List.of("item-drop", "item-pickup");
+
+    /**
      * The configuration service.
      */
     protected final ConfigurationService configurationService;
@@ -261,6 +266,20 @@ public class SqlActivityQueryBuilder {
      * the legacy materialized query.
      */
     private void addModificationOrdering(SelectQuery<Record> queryBuilder) {
+        queryBuilder.addOrderBy(
+            DSL.decode().when(PRISM_ACTIONS.ACTION.in(CHRONOLOGICAL_MODIFICATION_ACTIONS), 1).else_(-1).asc()
+        );
+        queryBuilder.addOrderBy(
+            DSL.decode()
+                .when(PRISM_ACTIONS.ACTION.in(CHRONOLOGICAL_MODIFICATION_ACTIONS), PRISM_ACTIVITIES.TIMESTAMP)
+                .desc()
+        );
+        queryBuilder.addOrderBy(
+            DSL.decode()
+                .when(PRISM_ACTIONS.ACTION.in(CHRONOLOGICAL_MODIFICATION_ACTIONS), PRISM_ACTIVITIES.ACTIVITY_ID)
+                .desc()
+        );
+
         // Most rollbacks "build up" but some hanging blocks need to be "built down" or they just break.
         // In order to do this, we tell hanging blocks to sort *after* everything else,
         // then we sort everything by `y asc` and sort these hanging blocks by `y desc`.

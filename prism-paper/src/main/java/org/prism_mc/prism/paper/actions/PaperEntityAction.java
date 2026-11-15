@@ -180,6 +180,11 @@ public class PaperEntityAction extends PaperAction implements EntityAction {
             (isRollback && type().resultType().equals(ActionResultType.REMOVES)) ||
             (!isRollback && type().resultType().equals(ActionResultType.CREATES));
 
+        // A preview must not spawn, remove, or modify real entities
+        if (!mode.equals(ModificationQueueMode.COMPLETING)) {
+            return ModificationResult.builder().activity(activityContext).statusFromMode(mode).build();
+        }
+
         if (shouldSpawn) {
             if (entityContainer.entityType().getEntityClass() != null) {
                 Location loc = new Location(world, coordinate.x(), coordinate.y(), coordinate.z());

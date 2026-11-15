@@ -42,6 +42,11 @@ public enum ModificationSkipReason {
     FULL_INVENTORY,
 
     /**
+     * The item to take back is no longer in the target inventory.
+     */
+    ITEM_MISSING,
+
+    /**
      * The rollback is not applicable due to specifics.
      */
     NOT_APPLICABLE,

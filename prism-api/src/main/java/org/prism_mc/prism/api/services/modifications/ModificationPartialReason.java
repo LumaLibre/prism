@@ -30,4 +30,9 @@ public enum ModificationPartialReason {
      * The modification could not be added because the target inventory is full.
      */
     FULL_INVENTORY,
+
+    /**
+     * The item to take back is no longer in the target inventory.
+     */
+    ITEM_MISSING,
 }

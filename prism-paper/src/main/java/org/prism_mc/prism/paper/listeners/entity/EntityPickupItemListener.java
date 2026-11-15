@@ -69,7 +69,15 @@ public class EntityPickupItemListener extends AbstractListener implements Listen
             return;
         }
 
-        var action = new PaperItemStackAction(PaperActionTypeRegistry.ITEM_PICKUP, itemStack);
+        int pickedUp = itemStack.getAmount() - event.getRemaining();
+        if (pickedUp <= 0) {
+            return;
+        }
+
+        var pickedUpStack = itemStack.clone();
+        pickedUpStack.setAmount(pickedUp);
+
+        var action = new PaperItemStackAction(PaperActionTypeRegistry.ITEM_PICKUP, pickedUpStack);
         var builder = PaperActivity.builder()
             .action(action)
             .location(event.getEntity().getLocation())
